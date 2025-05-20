@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>MQTT Dashboard</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f2f5;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .group {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    .btn {
+      padding: 20px;
+      font-size: 18px;
+      width: 120px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background-color: #ccc;
+    }
+    .btn.on {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .control {
+      margin-top: 30px;
+    }
+    .control .btn {
+      width: 200px;
+      background-color: #2196F3;
+      color: white;
+    }
+    .control .btn.off {
+      background-color: #f44336;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>RELAY UJI COBA NAJIH</h1>
+
+  <div class="control">
+    <button class="btn" onclick="setAllRelays('ON')">Hidupkan Semua Relay</button>
+    <button class="btn off" onclick="setAllRelays('OFF')">Matikan Semua Relay</button>
+  </div>
+
+  <h2>Ruang Tamu</h2>
+  <div class="group" id="ruangTamu"></div>
+
+  <h2>Kamar</h2>
+  <div class="group" id="kamar"></div>
+
+  <script>
+    const options = {
+      connectTimeout: 4000,
+      username: 'wahyu1',
+      password: 'Gapura123',
+    };
+
+    const client = mqtt.connect('wss://c9bccfe1c3f64e3b99423e4df7609ead.s1.eu.hivemq.cloud:8884/mqtt', options);
+    const buttons = [];
+
+    function createButton(i) {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = `Relay ${i}`;
+      btn.dataset.state = 'OFF';
+
+      btn.addEventListener('click', () => {
+        const newState = btn.dataset.state === 'OFF' ? 'ON' : 'OFF';
+        client.publish(`relay/${i}`, newState);
+        updateButtonState(btn, newState);
+      });
+
+      return btn;
+    }
+
+    function updateButtonState(btn, state) {
+      btn.dataset.state = state;
+      if (state === 'ON') {
+        btn.classList.add('on');
+      } else {
+        btn.classList.remove('on');
+      }
+    }
+
+    function setAllRelays(state) {
+      for (let i = 1; i <= 8; i++) {
+        client.publish(`relay/${i}`, state);
+        updateButtonState(buttons[i - 1], state);
+      }
+    }
+
+    client.on('connect', () => {
+      console.log('Terhubung ke MQTT');
+      for (let i = 1; i <= 8; i++) {
+        client.subscribe(`relay/${i}`);
+      }
+    });
+
+    client.on('message', (topic, message) => {
+      const index = parseInt(topic.split('/')[1]) - 1;
+      const state = message.toString();
+      updateButtonState(buttons[index], state);
+    });
+
+    // Render buttons
+    for (let i = 1; i <= 8; i++) {
+      const btn = createButton(i);
+      buttons.push(btn);
+      if (i <= 4) {
+        document.getElementById('ruangTamu').appendChild(btn);
+      } else {
+        document.getElementById('kamar').appendChild(btn);
+      }
+    }
+  </script>
+</body>
+</html>
