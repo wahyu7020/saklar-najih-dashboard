@@ -14,14 +14,14 @@
     h1 {
       margin-bottom: 10px;
     }
-    #status {
+    #status, #espStatus {
       font-size: 16px;
       color: white;
       padding: 6px 12px;
       border-radius: 5px;
       background-color: gray;
       display: inline-block;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .group {
       display: flex;
@@ -60,7 +60,9 @@
 <body>
 
   <h1>RELAY UJI COBA NAJIH</h1>
-  <div id="status">Menghubungkan...</div>
+
+  <div id="status">Menghubungkan ke MQTT...</div><br>
+  <div id="espStatus">Status ESP: Tidak diketahui</div>
 
   <div class="control">
     <button class="btn" onclick="setAllRelays('ON')">Hidupkan Semua Relay</button>
@@ -75,11 +77,18 @@
 
   <script>
     const statusEl = document.getElementById('status');
+    const espStatusEl = document.getElementById('espStatus');
     const buttons = [];
+    let lastESPTime = Date.now();
 
     function updateStatus(text, color) {
       statusEl.textContent = text;
       statusEl.style.backgroundColor = color;
+    }
+
+    function updateESPStatus(text, color) {
+      espStatusEl.textContent = `Status ESP: ${text}`;
+      espStatusEl.style.backgroundColor = color;
     }
 
     const options = {
@@ -122,11 +131,14 @@
     }
 
     client.on('connect', () => {
-      console.log('Terhubung ke ESP');
-      updateStatus("Terhubung ke ESP", "green");
+      console.log('Terhubung ke MQTT');
+      updateStatus("Terhubung ke MQTT", "green");
+
       for (let i = 1; i <= 8; i++) {
         client.subscribe(`relay/${i}`);
       }
+
+      client.subscribe("status/esp");
     });
 
     client.on('reconnect', () => {
@@ -134,19 +146,33 @@
     });
 
     client.on('error', (err) => {
-      console.error('ESP Offline:', err);
-      updateStatus("Gagal terhubung ke ESP", "red");
+      console.error('MQTT Error:', err);
+      updateStatus("Koneksi MQTT gagal", "red");
     });
 
     client.on('offline', () => {
-      updateStatus("Koneksi ESP offline", "darkred");
+      updateStatus("MQTT Offline", "darkred");
     });
 
     client.on('message', (topic, message) => {
+      const msg = message.toString();
+
+      if (topic === "status/esp") {
+        lastESPTime = Date.now();
+        updateESPStatus("ONLINE", "green");
+        return;
+      }
+
       const index = parseInt(topic.split('/')[1]) - 1;
-      const state = message.toString();
-      updateButtonState(buttons[index], state);
+      updateButtonState(buttons[index], msg);
     });
+
+    // Cek heartbeat ESP setiap 3 detik
+    setInterval(() => {
+      if (Date.now() - lastESPTime > 10000) {
+        updateESPStatus("OFFLINE", "red");
+      }
+    }, 3000);
 
     // Render tombol relay
     for (let i = 1; i <= 8; i++) {
