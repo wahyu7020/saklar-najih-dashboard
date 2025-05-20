@@ -14,6 +14,15 @@
     h1 {
       margin-bottom: 10px;
     }
+    #status {
+      font-size: 16px;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 5px;
+      background-color: gray;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
     .group {
       display: flex;
       justify-content: center;
@@ -36,6 +45,7 @@
     }
     .control {
       margin-top: 30px;
+      margin-bottom: 20px;
     }
     .control .btn {
       width: 200px;
@@ -50,6 +60,7 @@
 <body>
 
   <h1>RELAY UJI COBA NAJIH</h1>
+  <div id="status">Menghubungkan...</div>
 
   <div class="control">
     <button class="btn" onclick="setAllRelays('ON')">Hidupkan Semua Relay</button>
@@ -63,6 +74,14 @@
   <div class="group" id="kamar"></div>
 
   <script>
+    const statusEl = document.getElementById('status');
+    const buttons = [];
+
+    function updateStatus(text, color) {
+      statusEl.textContent = text;
+      statusEl.style.backgroundColor = color;
+    }
+
     const options = {
       connectTimeout: 4000,
       username: 'wahyu1',
@@ -70,7 +89,6 @@
     };
 
     const client = mqtt.connect('wss://c9bccfe1c3f64e3b99423e4df7609ead.s1.eu.hivemq.cloud:8884/mqtt', options);
-    const buttons = [];
 
     function createButton(i) {
       const btn = document.createElement('button');
@@ -105,9 +123,23 @@
 
     client.on('connect', () => {
       console.log('Terhubung ke MQTT');
+      updateStatus("Terhubung ke MQTT", "green");
       for (let i = 1; i <= 8; i++) {
         client.subscribe(`relay/${i}`);
       }
+    });
+
+    client.on('reconnect', () => {
+      updateStatus("Mencoba menghubungkan ulang...", "orange");
+    });
+
+    client.on('error', (err) => {
+      console.error('MQTT Error:', err);
+      updateStatus("Gagal terhubung ke MQTT", "red");
+    });
+
+    client.on('offline', () => {
+      updateStatus("Koneksi MQTT offline", "darkred");
     });
 
     client.on('message', (topic, message) => {
@@ -116,7 +148,7 @@
       updateButtonState(buttons[index], state);
     });
 
-    // Render buttons
+    // Render tombol relay
     for (let i = 1; i <= 8; i++) {
       const btn = createButton(i);
       buttons.push(btn);
