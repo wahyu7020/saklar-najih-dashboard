@@ -122,8 +122,8 @@
     }
 
     client.on('connect', () => {
-      console.log('Terhubung ke MQTT');
-      updateStatus("Terhubung ke MQTT", "green");
+      console.log('Terhubung ke ESP');
+      updateStatus("Terhubung ke ESP", "green");
       for (let i = 1; i <= 8; i++) {
         client.subscribe(`relay/${i}`);
       }
@@ -134,12 +134,12 @@
     });
 
     client.on('error', (err) => {
-      console.error('MQTT Error:', err);
-      updateStatus("Gagal terhubung ke MQTT", "red");
+      console.error('ESP Offline:', err);
+      updateStatus("Gagal terhubung ke ESP", "red");
     });
 
     client.on('offline', () => {
-      updateStatus("Koneksi MQTT offline", "darkred");
+      updateStatus("Koneksi ESP offline", "darkred");
     });
 
     client.on('message', (topic, message) => {
